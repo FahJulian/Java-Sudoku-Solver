@@ -12,7 +12,7 @@ public class Cell {
     private Color color;
 
     public Cell(int[] pos, int value) {
-
+        System.out.println("Hello from Cell");
     }
 
     public void render() {

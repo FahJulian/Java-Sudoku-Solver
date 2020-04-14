@@ -1,8 +1,7 @@
 package org.sudoku;
 
 import javax.swing.JFrame;
-
-import org.sudoku.Cell;
+import java.util.Arrays;
 
 public class GUI {
     /**
@@ -19,7 +18,15 @@ public class GUI {
     // TODO: Add some kind of anonymous key/mouse listener
 
     public GUI(int[][] data) {
+        System.out.println("Hello from GUI");
+        new Cell(new int[]{1, 2}, 10);
+        Solver solver = new Solver(data);
+        int solvable = solver.solve();
+        while (solver.hasNextLogEntry())
+            System.out.println(solver.nextLogEntry());
 
+        System.out.println(solvable);
+        System.out.println(Arrays.deepToString(solver.getBoard()));
     }
 
     /** 
@@ -42,7 +49,7 @@ public class GUI {
     }
 
     private boolean isValueCorrect(int row, int col, int value) {
-
+        return true;
     }
 
     private void selectCellAt(int row, int col) {

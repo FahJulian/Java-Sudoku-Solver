@@ -1,5 +1,7 @@
 package org.sudoku;
 
+import java.util.Arrays;
+
 public class LogEntry {
     /** 
      * Data structure to store the process of solving a sudoku bord
@@ -13,5 +15,9 @@ public class LogEntry {
         this.eventType = eventType;
         this.pos = pos;
         this.value = value;
+    }
+
+    public String toString() {
+        return String.format("%s at %s", eventType, Arrays.toString(pos)) + (value != 0 ? String.format("at %d", value) : "");
     }
 }
