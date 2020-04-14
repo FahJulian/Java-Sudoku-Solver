@@ -3,14 +3,12 @@ package org.sudoku;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-import javax.swing.event.MouseInputListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.Color;
+import java.awt.Font;
 
 public class GUI extends JPanel {
     /**
@@ -20,123 +18,70 @@ public class GUI extends JPanel {
     private static final long serialVersionUID = 1;
 
     private static final String TITLE = "Sudoku Solver";
-    private static final int WIDTH = Cell.SIZE * 9 + 4, HEIGHT = Cell.SIZE * 9 + 4;
-    private static final int FPS = 1000;
+    private static final int TIMESTAMP_HEIGHT = 50;
+    private static final int TIMESTAMP_FONTSIZE = 25;
+    private static final int BORDER_THICKNESS = 4;
+    private static final int WIDTH = Cell.SIZE * 9 + BORDER_THICKNESS, 
+        HEIGHT = Cell.SIZE * 9 + BORDER_THICKNESS + TIMESTAMP_HEIGHT;
+    private static final int FPS = 120;
     private static final int FRAME_TIME = 1000 / FPS;
 
-    private final JFrame window;
-    private final int windowYoffset;
+    /** 
+     * Offset that needs to be put to many y values related to the JFrame 
+     * because of a problem with the title bar of the JFrame Window.
+    */
+    static final int windowYOffset = 25;
 
-    private int[][] data, initialData, solutionData;
-    private boolean running, runningSimulation, simulationFinished;
+    private final JFrame window;
+
+    private boolean running, runningSimulation;
+
+    private int[][] data, solutionData;
     private Solver solver;
     private Cell[][] cells;
     private Cell selectedCell;
 
+    private String timestamp;
+    private int numericTimestamp;
+    private final long start;
+    
     public GUI(int[][] data) {
         this.data = deepcopy(data);
-        this.initialData = deepcopy(data);
         Solver solutionSolver = new Solver(deepcopy(data), false);
         solutionSolver.solve();
         this.solutionData = solutionSolver.getBoard();
-        this.solver = new Solver(deepcopy(data), true);
 
+        // Init cell grid
         cells = new Cell[9][9];
         for (int row = 0; row <= 8; row++) {
             for (int col = 0; col <= 8; col++) {
-                int[] pos = new int[]{col * Cell.SIZE + 2, row * Cell.SIZE + 2};
-                cells[row][col] = new Cell(pos, data[row][col]);
+                int x = col * Cell.SIZE + 2, 
+                    y = row * Cell.SIZE + 2;
+                cells[row][col] = new Cell(x, y, row, col, data[row][col]);
             }
         }
         selectedCell = null;
 
+        // Init timestamp variables
+        timestamp = "0:00";
+        numericTimestamp = 0;
+        start = System.nanoTime();
+
+        // Init window
         window = new JFrame(TITLE);
-        window.setSize(new Dimension(WIDTH, HEIGHT));
+        window.setSize(new Dimension(WIDTH, HEIGHT + windowYOffset));
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setResizable(false);
         window.setLocationRelativeTo(null);
         window.add(this);
         window.setVisible(true);
         window.requestFocus();
-        // Resize as top bar of the window get counted towards overall size
-        windowYoffset = HEIGHT - window.getContentPane().getSize().height; 
-        window.setSize(new Dimension(WIDTH, HEIGHT + windowYoffset));
-
-        window.addKeyListener(new KeyListener() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                switch (e.getKeyCode()) {
-                    case KeyEvent.VK_ESCAPE:
-                        System.exit(1);
-                        running = false;
-                        break;
-                    case KeyEvent.VK_ENTER:
-                        if (selectedCell != null && isValueCorrect(selectedCell, selectedCell.getProvisionalValue()))
-                            selectedCell.setValue(selectedCell.getProvisionalValue());
-                        break;
-                    case KeyEvent.VK_SPACE:
-                        startSimulation();
-                        break;
-                    case KeyEvent.VK_1:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(1);
-                        break;
-                    case KeyEvent.VK_2:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(2);
-                        break;
-                    case KeyEvent.VK_3:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(3);
-                        break;
-                    case KeyEvent.VK_4:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(4);
-                        break;
-                    case KeyEvent.VK_5:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(5);
-                        break;
-                    case KeyEvent.VK_6:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(6);
-                        break;
-                    case KeyEvent.VK_7:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(7);
-                        break;
-                    case KeyEvent.VK_8:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(8);
-                        break;
-                    case KeyEvent.VK_9:
-                        if (selectedCell != null) selectedCell.setProvisionalValue(9);
-                        break;
-                }
-            }
-
-            @Override
-            public void keyPressed(KeyEvent e) {}
-            @Override
-            public void keyTyped(KeyEvent e){}
-        });
-
-        window.addMouseListener(new MouseInputListener(){
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                selectCellAt(e.getX(), e.getY() - windowYoffset);
-            }
-        
-            @Override
-            public void mouseMoved(MouseEvent e) {}
-            @Override
-            public void mouseDragged(MouseEvent e) {}
-            @Override
-            public void mousePressed(MouseEvent e) {}
-            @Override
-            public void mouseExited(MouseEvent e) {}        
-            @Override
-            public void mouseEntered(MouseEvent e) {}
-            @Override
-            public void mouseClicked(MouseEvent e) {}
-        });
+        InputManager im = new InputManager(this);
+        window.addKeyListener(im);
+        window.addMouseListener(im);
     }
 
-    /** 
-     * Start the game loop. Should be called immediately after Initialization.
-     */
+    /** Start the game loop. Should be called immediately after Initialization. */
     public void run() {
         running = true;
         while(running) {
@@ -156,6 +101,62 @@ public class GUI extends JPanel {
         }
     }
 
+    /** If there is a cell at the given coordinates, select it. */
+    void selectCellAt(int x, int y) {
+        if (selectedCell != null) selectedCell.unselect();
+        for (Cell[] row: cells)
+            for(Cell c: row)
+                if (c.contains(x, y)) {
+                    selectedCell = c;
+                    selectedCell.select();
+                    return;
+                }
+        selectedCell = null;
+    }
+
+    /** Run the solving algorithm simulation. */
+    void startSimulation() {
+        runningSimulation = true;
+        this.solver = new Solver(deepcopy(this.data), true);
+        this.solver.solve();
+    }
+
+    /** Select the cell right to the current selected cell. */
+    void selectRight() {
+        if (selectedCell == null) return;
+        selectCellAt(selectedCell.x + Cell.SIZE, selectedCell.y);
+    }
+    /** Select the cell left to the current selected cell. */
+    void selectLeft() {
+        if (selectedCell == null) return;
+        selectCellAt(selectedCell.x - Cell.SIZE, selectedCell.y);
+    }
+    /** Select the cell above to the current selected cell. */
+    void selectAbove() {
+        if (selectedCell == null) return;
+        selectCellAt(selectedCell.x, selectedCell.y - Cell.SIZE);
+    }
+    /** Select the cell below to the current selected cell. */
+    void selectBelow() {
+        if (selectedCell == null) return;
+        selectCellAt(selectedCell.x, selectedCell.y + Cell.SIZE);
+    }
+    /** If a cell is selected, redirect the value to that cell. */
+    void setProvisionalValue(int value) {
+        if (selectedCell == null) return;
+        selectedCell.setProvisionalValue(value);
+    }
+
+    /** If the current selected cell's provisional value is correct, confirm it. */
+    void confirmProvisionalIfValid() {
+        if (selectedCell == null) return;
+        int value = selectedCell.getProvisionalValue();
+        if (isValueCorrect(selectedCell, value)){
+            selectedCell.setValue(value);
+            data[selectedCell.row][selectedCell.col] = value;
+        }
+    }
+
     private void update() {
         if (runningSimulation) {
             if (solver.hasNextLogEntry()) {
@@ -172,6 +173,16 @@ public class GUI extends JPanel {
                 }
             }
         }
+
+        // Update timestamp
+        int delta = (int)((System.nanoTime() - start) / 1000000000);
+
+        if (delta > numericTimestamp) {
+            numericTimestamp = delta;
+            String minutes = String.valueOf(numericTimestamp / 60);
+            String seconds = numericTimestamp % 60 > 9 ? String.valueOf(numericTimestamp % 60) : "0" + String.valueOf(numericTimestamp % 60);
+            timestamp = String.format("%s:%s", minutes, seconds);
+        }
     }
 
     private void render() {
@@ -179,56 +190,45 @@ public class GUI extends JPanel {
     }
 
     private boolean isValueCorrect(Cell cell, int value) {
-        int col = (cell.getX() - 2) / Cell.SIZE;
-        int row = (cell.getY() - 2) / Cell.SIZE;
-        return solutionData[row][col] == value;
-    }
-
-    private void selectCellAt(int x, int y) {
-        if (selectedCell != null) selectedCell.unselect();
-        for (Cell[] row: cells)
-            for(Cell c: row)
-                if (c.contains(x, y)) {
-                    selectedCell = c;
-                    selectedCell.select();
-                    return;
-                }
-        selectedCell = null;
-    }
-
-    private void startSimulation() {
-        runningSimulation = true;
-        this.solver = new Solver(deepcopy(this.data), true);
-        this.solver.solve();
-    }
-
-    private void cancelSimulation() {
-        runningSimulation = false;
+        return solutionData[cell.row][cell.col] == value;
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.setColor(Color.WHITE);
-        g.fillRect(0, 0, WIDTH, HEIGHT);
 
-        g.setColor(Color.BLACK);
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, 
+            RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+
+        // Draw Background
+        g2d.setColor(Color.WHITE);
+        g2d.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // Draw Grid
+        g2d.setColor(Color.BLACK);
         for (int row = 0; row <= 9; row++) {
             if (row % 3 == 0) {
-                g.fillRect(0, row * Cell.SIZE, WIDTH, 4);
+                g2d.fillRect(0, row * Cell.SIZE, WIDTH, 4);
             } else {
-                g.fillRect(0, row * Cell.SIZE + 1, WIDTH, 2);
+                g2d.fillRect(0, row * Cell.SIZE + 1, WIDTH, 2);
             }
         }
-
         for (int col = 0; col <= 9; col++) {
             if (col % 3 == 0)
-                g.fillRect(col * Cell.SIZE, 0, 4, HEIGHT);
+                g2d.fillRect(col * Cell.SIZE, 0, 4, Cell.SIZE * 9 + 4);
             else
-                g.fillRect(col * Cell.SIZE + 1, 0, 2, HEIGHT);
+                g2d.fillRect(col * Cell.SIZE + 1, 0, 2, Cell.SIZE * 9 + 4);
         }
 
-        for (Cell[] row: cells) for(Cell c: row) c.render(g);
+        // Draw cells
+        for (Cell[] row: cells) for (Cell c: row) c.render(g2d);
+
+        // Bottom right timestamp
+        Font f = new Font("Arial", 1, TIMESTAMP_FONTSIZE);
+        int string_width = g2d.getFontMetrics(f).stringWidth(timestamp);
+        g2d.setFont(f);
+        g2d.drawString(timestamp, WIDTH - (string_width + 15), HEIGHT - 15);
     }
 
     private static int[][] deepcopy(int[][] array) {

@@ -1,3 +1,5 @@
+*.mf
+
 ### VSCode ###
 /.vscode
 /bin
