@@ -14,13 +14,13 @@ public class Cell {
     private int[] pos;
     private int value, provisionalValue;
     private boolean selected;
-    private Color color;
+    private Color textColor;
 
     public Cell(int[] pos, int value) {
         this.pos = pos;
         this.value = value;
         this.provisionalValue = 0;
-        this.color = Color.BLACK;
+        this.textColor = Color.BLACK;
     }
     
     public void render(Graphics g) {
@@ -32,7 +32,7 @@ public class Cell {
         }
 
         if (value != 0) {
-            g.setColor(Color.BLACK);
+            g.setColor(textColor);
             g.setFont(new Font("Arial", 1, 40));
             g.drawString(String.valueOf(value), pos[0] + 10, pos[1] + 40);
         } else if (provisionalValue != 0) {
@@ -56,6 +56,10 @@ public class Cell {
 
     public void unselect() {
         this.selected = false;
+    }
+
+    public void setTextColor(Color color) {
+        textColor = color;
     }
 
     public void setValue(int value) {

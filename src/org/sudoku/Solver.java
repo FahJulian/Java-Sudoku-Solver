@@ -14,6 +14,7 @@ public class Solver {
     private Queue<LogEntry> logQueue;
 
     public Solver(int[][] board, boolean log) {
+        this.log = log;
         this.board = board;
         this.logQueue = new LinkedList<LogEntry>();
     }
@@ -58,7 +59,7 @@ public class Solver {
             for (int col = 0; col <= 8; col++)
                 if (this.board[row][col] == 0) 
                     return new int[]{row, col};
-                    
+
         return new int[]{-1, -1};     // No empy pos
     }
     

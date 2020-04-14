@@ -7,7 +7,6 @@ import javax.swing.event.MouseInputListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
-import java.awt.event.KeyEvent;
 
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -22,7 +21,7 @@ public class GUI extends JPanel {
 
     private static final String TITLE = "Sudoku Solver";
     private static final int WIDTH = Cell.SIZE * 9 + 4, HEIGHT = Cell.SIZE * 9 + 4;
-    private static final int FPS = 60;
+    private static final int FPS = 1000;
     private static final int FRAME_TIME = 1000 / FPS;
 
     private final JFrame window;
@@ -72,10 +71,11 @@ public class GUI extends JPanel {
                         running = false;
                         break;
                     case KeyEvent.VK_ENTER:
-                        System.out.println("ENTER");
                         if (selectedCell != null && isValueCorrect(selectedCell, selectedCell.getProvisionalValue()))
                             selectedCell.setValue(selectedCell.getProvisionalValue());
-                        else System.out.println("INVALID");
+                        break;
+                    case KeyEvent.VK_SPACE:
+                        startSimulation();
                         break;
                     case KeyEvent.VK_1:
                         if (selectedCell != null) selectedCell.setProvisionalValue(1);
@@ -157,15 +157,25 @@ public class GUI extends JPanel {
     }
 
     private void update() {
-
+        if (runningSimulation) {
+            if (solver.hasNextLogEntry()) {
+                LogEntry logEntry = solver.nextLogEntry();
+                Cell cell = cells[logEntry.pos[0]][logEntry.pos[1]];
+                if (logEntry.eventType == "PUT") {
+                    cell.setTextColor(Color.GREEN);
+                    cell.setValue(logEntry.value);
+                } else if (logEntry.eventType == "INVALID") {
+                    cell.setTextColor(Color.ORANGE);
+                    cell.setValue(logEntry.value);
+                } else if (logEntry.eventType == "REMOVE") {
+                    cell.setTextColor(Color.RED);
+                }
+            }
+        }
     }
 
     private void render() {
         repaint();
-    }
-
-    private void setValue(Cell cell, int value) {
-
     }
 
     private boolean isValueCorrect(Cell cell, int value) {
@@ -187,11 +197,13 @@ public class GUI extends JPanel {
     }
 
     private void startSimulation() {
-
+        runningSimulation = true;
+        this.solver = new Solver(deepcopy(this.data), true);
+        this.solver.solve();
     }
 
     private void cancelSimulation() {
-        
+        runningSimulation = false;
     }
 
     @Override
