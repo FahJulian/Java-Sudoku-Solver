@@ -10,11 +10,12 @@ public class Solver {
     */
 
     private int[][] board;
-    private Queue<LogEntry> log;
+    private boolean log;
+    private Queue<LogEntry> logQueue;
 
-    public Solver(int[][] board) {
+    public Solver(int[][] board, boolean log) {
         this.board = board;
-        this.log = new LinkedList<LogEntry>();
+        this.logQueue = new LinkedList<LogEntry>();
     }
 
     public int solve() {
@@ -25,7 +26,7 @@ public class Solver {
         for (int num = 1; num < 10; num++) {
 
             if (this.isNumValidAtPos(pos, num)) {
-                log("PUT", pos, num);
+                if (log) log("PUT", pos, num);
                 board[row][col] = num;
                 int solution = solve();
 
@@ -34,22 +35,22 @@ public class Solver {
                 else
                     board[row][col] = 0;
             } else
-                log("INVALID", pos, num);
+            if (log) log("INVALID", pos, num);
         }
-        log("REMOVE", pos, 0);
+        if (log) log("REMOVE", pos, 0);
         return -1;
     }
     
     public LogEntry nextLogEntry() {
-        return log.poll();
+        return logQueue.poll();
     }
 
     public boolean hasNextLogEntry() {
-        return log.peek() != null;
+        return logQueue.peek() != null;
     }
     
     private void log(String eventType, int[] pos, int value) {
-        log.offer(new LogEntry(eventType, pos, value));
+        logQueue.offer(new LogEntry(eventType, pos, value));
     }
     
     private int[] nextEmptyPos() {
@@ -57,7 +58,7 @@ public class Solver {
             for (int col = 0; col <= 8; col++)
                 if (this.board[row][col] == 0) 
                     return new int[]{row, col};
-        System.out.println("BOARD FULL");
+                    
         return new int[]{-1, -1};     // No empy pos
     }
     

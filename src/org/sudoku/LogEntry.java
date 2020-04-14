@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public class LogEntry {
     /** 
-     * Data structure to store the process of solving a sudoku bord
+     * Data structure to store the process of solving a sudoku board
     */
 
     public final String eventType;
